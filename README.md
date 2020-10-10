@@ -11,7 +11,7 @@ BEFORE
 - add PLEX_CLAIM 
 
 AFTER
-- chown -R 1000:1000 downloads
+- chown -R user:user downloads
 - change ports in rutorrent VPN and restart it (2 ports for DHT and connections)
 - create admin account in portainer
 - create account in nextcloud
