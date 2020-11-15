@@ -7,10 +7,9 @@ BEFORE
 - check /dev for scrutiny and add/remove disks to match
 
 AFTER
-- chown -R user:user downloads folder
+- chown -R user:user downloads and config folder
 - change ports in rutorrent VPN rtorrent.rc and restart it
 - create admin account in portainer
-- connect tautulli to plex
 - change deluge password
 - config heimdall for everything (URLs for APIs are http://service:port [eg. http://sonarr:8989])
 - config sonarr, radarr, jackett, bazarr 
