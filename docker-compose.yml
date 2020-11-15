@@ -3,54 +3,24 @@ version: "3.8"
 services:
     
     traefik:
-        image: traefik:2.3.1
+        image: traefik:2.3.2
         container_name: traefik
         ports:
             - "80:80"
-            - "443:443"
             - "8080:8080"
         labels:
             - 'traefik.enable=true'
-            - 'traefik.http.routers.traefik.entrypoints=websecure'
-            - 'traefik.http.routers.traefik.tls=true'
-            
+            - 'traefik.http.routers.traefik.entrypoints=web'
+
             - 'traefik.http.services.traefik.loadbalancer.server.port=8080'
             - 'traefik.http.routers.traefik.rule=Host(`traefik.${DOMAIN}`)'
             - "traefik.http.routers.traefik.middlewares=auth"
 
-            # wildcard certs
-            #- "traefik.http.routers.traefik.tls.certresolver=letsEncrypt"
-            #- "traefik.http.routers.traefik.tls.domains[0].main=${DOMAIN}"
-            #- "traefik.http.routers.traefik.tls.domains[0].sans=*.${DOMAIN}"
-            #- "traefik.http.routers.traefik.tls.domains[0].sans=sonarr.${DOMAIN},radarr.${DOMAIN},nextcloud.${DOMAIN},jackett.${DOMAIN},tautulli.${DOMAIN},plex.${DOMAIN},deluge.${DOMAIN},rutorrent.${DOMAIN},rutorrents.${DOMAIN},bazarr.${DOMAIN},heimdall.${DOMAIN},duplicati.${DOMAIN},netdata.${DOMAIN},scrutiny.${DOMAIN},transfer.${DOMAIN}"
-
             # auths
             - 'traefik.http.middlewares.auth.basicauth.users=${BASICAUTHCRED}'
-            - 'traefik.http.middlewares.secondaryauth.basicauth.users=${SECONDARYAUTH}'
-
-            # http to https
-            - 'traefik.http.routers.http-catchall.rule=HostRegexp(`{host:(www\.)?.+}`)'
-            - 'traefik.http.routers.http-catchall.entrypoints=web'
-            - 'traefik.http.routers.http-catchall.middlewares=wwwtohttps'
-
-            # https (www.) to https
-            - 'traefik.http.routers.wwwsecure-catchall.rule=HostRegexp(`{host:(www\.).+}`)'
-            - 'traefik.http.routers.wwwsecure-catchall.entrypoints=websecure'
-            - 'traefik.http.routers.wwwsecure-catchall.tls=true'
-            - 'traefik.http.routers.wwwsecure-catchall.middlewares=wwwtohttps'
-
-            # http(s)://(www.) to  https://
-            - 'traefik.http.middlewares.wwwtohttps.redirectregex.regex=^https?://(?:www\.)?(.+)'
-            - 'traefik.http.middlewares.wwwtohttps.redirectregex.replacement=https://$${1}'
-            - 'traefik.http.middlewares.wwwtohttps.redirectregex.permanent=true'
-
-        environment: 
-            - CLOUDFLARE_EMAIL=${CLOUDFLARE_EMAIL}
-            - CLOUDFLARE_API_KEY=${CLOUDFLARE_API_KEY}
         volumes:
             - /var/run/docker.sock:/var/run/docker.sock:ro
             - ./traefik.yml:/traefik.yml:ro
-            - ${CONFIG}/acme:/acme
         networks:
             - web
         restart: always
@@ -62,8 +32,7 @@ services:
         
         labels:
             - "traefik.enable=true"
-            - "traefik.http.routers.portainer.entrypoints=websecure"
-            - 'traefik.http.routers.portainer.tls=true'
+            - "traefik.http.routers.portainer.entrypoints=web"
             - "traefik.http.services.portainer.loadbalancer.server.port=9000"
             - "traefik.http.routers.portainer.rule=Host(`portainer.${DOMAIN}`)"
         volumes:
@@ -73,110 +42,49 @@ services:
             - web
         restart: always
 
-    nginx:
-        image: nginx:1.19.3-alpine
-        container_name: nginx
-        labels:
-            - "traefik.enable=true"
-            - "traefik.http.routers.nginx.entrypoints=websecure"
-            - "traefik.http.routers.nginx.tls=true"
-            - "traefik.http.routers.nginx.rule=Host(`${DOMAIN}`)"
-        environment:
-            - NGINX_HOST=${DOMAIN}
-            - NGINX_PORT=443
-        volumes:
-            - /var/www/html:/var/www/html
-            - ${CONFIG}/nginx/nginx.conf:/etc/nginx/nginx.conf
-        networks:
-            - web
-        restart: unless-stopped
-
     sonarr:
-        image: linuxserver/sonarr
+        image: linuxserver/sonarr:preview
         container_name: sonarr
         environment:
             - PUID=1000
             - PGID=1000
             - TZ=${TZ}
-            - UMASK_SET=002 #optional
+            - UMASK_SET=002
         volumes:
             - ${CONFIG}/sonarr:/config
-            - ${DOWNLOAD_FOLDER}:/tv
-            - ${DOWNLOAD_FOLDER}/temp/sonarr:/downloads
+            - ${DOWNLOAD_FOLDER}:/downloads
+            - /media:/media
         labels:
             - "traefik.enable=true"
-            - "traefik.http.routers.sonarr.entrypoints=websecure"
-            - "traefik.http.routers.sonarr.tls=true"
+            - "traefik.http.routers.sonarr.entrypoints=web"
             - "traefik.http.services.sonarr.loadbalancer.server.port=8989"
             - "traefik.http.routers.sonarr.rule=Host(`sonarr.${DOMAIN}`)"
             - "traefik.http.routers.sonarr.middlewares=auth"
-        restart: unless-stopped
         networks:
             - web
+        restart: unless-stopped
 
     radarr:
-        image: linuxserver/radarr
+        image: linuxserver/radarr:nightly
         container_name: radarr
         environment:
             - PUID=1000
             - PGID=1000
             - TZ=${TZ}
-            - UMASK_SET=002 #optional
+            - UMASK_SET=002
         volumes:
             - ${CONFIG}/radarr:/config
-            - ${DOWNLOAD_FOLDER}:/movies
-            - ${DOWNLOAD_FOLDER}/temp/radarr:/downloads
+            - ${DOWNLOAD_FOLDER}:/downloads
+            - /media:/media
         labels:
             - "traefik.enable=true"
-            - "traefik.http.routers.radarr.entrypoints=websecure"
-            - "traefik.http.routers.radarr.tls=true"
+            - "traefik.http.routers.radarr.entrypoints=web"
             - "traefik.http.services.radarr.loadbalancer.server.port=7878"
             - "traefik.http.routers.radarr.rule=Host(`radarr.${DOMAIN}`)"
             - "traefik.http.routers.radarr.middlewares=auth"
-        restart: unless-stopped
         networks:
             - web
-
-    mariadb:
-        image: mariadb:10.5.5-focal
-        container_name: mariadb
         restart: unless-stopped
-        environment:
-            MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-            MYSQL_DATABASE: nextcloud
-            MYSQL_USER: ${MYSQL_USER}
-            MYSQL_PASSWORD: ${MYSQL_PASSWORD}
-            MYSQL_INITDB_SKIP_TZINFO: 1
-        networks:
-            - web
-        volumes:
-            - /etc/localtime:/etc/localtime:ro
-            - /etc/timezone:/etc/timezone:ro
-            - ${NEXTCLOUD_FOLDER}/db:/var/lib/mysql
-
-    nextcloud:
-        image: linuxserver/nextcloud
-        container_name: nextcloud
-        environment:
-            - PUID=1000
-            - PGID=1000
-            - TZ=${TZ}
-        volumes:
-            - ${CONFIG}/nextcloud:/config
-            - ${NEXTCLOUD_FOLDER}/data:/data
-        labels:
-            - "traefik.enable=true"
-            - "traefik.tcp.routers.nextcloud.entrypoints=websecure"
-            - "traefik.tcp.routers.nextcloud.tls=true"
-            - "traefik.tcp.routers.nextcloud.rule=HostSNI(`nextcloud.${DOMAIN}`)"
-            - "traefik.tcp.routers.nextcloud.tls.passthrough=true"
-            - "traefik.tcp.routers.nextcloud.service=nextcloud"
-            - "traefik.tcp.services.nextcloud.loadbalancer.server.port=443"
-        restart: unless-stopped
-        depends_on:
-            - mariadb
-        networks:
-            - web
 
     jackett:
         image: linuxserver/jackett
@@ -185,77 +93,19 @@ services:
             - PUID=1000
             - PGID=1000
             - TZ=${TZ}
-            - AUTO_UPDATE=true #optional
-            #- RUN_OPTS=<run options here> #optional
+            - AUTO_UPDATE=true
         volumes:
             - ${CONFIG}/jackett:/config
-            - ${DOWNLOAD_FOLDER}/temp/jackett:/downloads
+            - ${DOWNLOAD_FOLDER}:/downloads
         labels:
             - "traefik.enable=true"
-            - "traefik.http.routers.jackett.entrypoints=websecure"
-            - "traefik.http.routers.jackett.tls=true"
+            - "traefik.http.routers.jackett.entrypoints=web"
             - "traefik.http.services.jackett.loadbalancer.server.port=9117"
             - "traefik.http.routers.jackett.rule=Host(`jackett.${DOMAIN}`)"
             - "traefik.http.routers.jackett.middlewares=auth"
-        restart: unless-stopped
         networks:
             - web
-
-    tautulli:
-        image: linuxserver/tautulli
-        container_name: tautulli
-        environment:
-            - PUID=1000
-            - PGID=1000
-            - TZ=${TZ}
-        volumes:
-            - ${CONFIG}/tautulli:/config
-            - ${CONFIG}/plex/logs:/logs
-        labels:
-            - "traefik.enable=true"
-            - "traefik.http.routers.tautulli.entrypoints=websecure"
-            - "traefik.http.routers.tautulli.tls=true"
-            - "traefik.http.services.tautulli.loadbalancer.server.port=8181"
-            - "traefik.http.routers.tautulli.rule=Host(`tautulli.${DOMAIN}`)"
         restart: unless-stopped
-        networks:
-            - web
-
-    plex:
-        image: linuxserver/plex
-        container_name: plex
-        hostname: plex.${DOMAIN}
-        ports:
-            - 32400:32400/tcp
-            - 32400:32400/udp
-            - 3005:3005/tcp
-            - 8324:8324/tcp
-            - 32469:32469/tcp
-            - 1900:1900/udp
-            - 32410:32410/udp
-            - 32412:32412/udp
-            - 32413:32413/udp
-            - 32414:32414/udp
-        environment:
-            - PUID=1000
-            - PGID=1000
-            - VERSION=docker
-            - UMASK_SET=002 #optional
-            - PLEX_CLAIM=${PLEX_CLAIM}
-            - ADVERTISE_IP="https://plex.${DOMAIN}:443"
-        volumes:
-            - ${CONFIG}/plex:/config
-            - ${CONFIG}/plex/logs:/logs
-            - ${DOWNLOAD_FOLDER}:/DOWNLOADS
-        labels:
-            - "traefik.enable=true"
-            - "traefik.http.routers.plex.entrypoints=websecure"
-            - "traefik.http.routers.plex.tls=true"
-            - "traefik.http.services.plex.loadbalancer.server.port=32400"
-            - "traefik.http.routers.plex.rule=Host(`plex.${DOMAIN}`)"
-        restart: unless-stopped
-        networks:
-            - web
 
     deluge:
         image: linuxserver/deluge
@@ -264,20 +114,21 @@ services:
             - PUID=1000
             - PGID=1000
             - TZ=${TZ}
-            - UMASK_SET=002 #optional
-            - DELUGE_LOGLEVEL=error #optional
+            - UMASK_SET=002
+            - DELUGE_LOGLEVEL=error
         volumes:
-            - ${CONFIG}/deluge-pub:/config
+            - ${CONFIG}/deluge:/config
             - ${DOWNLOAD_FOLDER}:/downloads
+            - /media:/media
         labels:
             - "traefik.enable=true"
-            - "traefik.http.routers.deluge.entrypoints=websecure"
-            - "traefik.http.routers.deluge.tls=true"
+            - "traefik.http.routers.deluge.entrypoints=web"
             - "traefik.http.services.deluge.loadbalancer.server.port=8112"
             - "traefik.http.routers.deluge.rule=Host(`deluge.${DOMAIN}`)"
+        depends_on:
+            - vpn
+        network_mode: service:vpn
         restart: unless-stopped
-        networks:
-            - web
 
     bazarr:
         image: linuxserver/bazarr
@@ -286,20 +137,20 @@ services:
             - PUID=1000
             - PGID=1000
             - TZ=${TZ}
-            - UMASK_SET=002 #optional
+            - UMASK_SET=002
         volumes:
             - ${CONFIG}/bazarr:/config
             - ${DOWNLOAD_FOLDER}:/DOWNLOADS
+            - /media:/media
         labels:
             - "traefik.enable=true"
-            - "traefik.http.routers.bazarr.entrypoints=websecure"
-            - "traefik.http.routers.bazarr.tls=true"
+            - "traefik.http.routers.bazarr.entrypoints=web"
             - "traefik.http.services.bazarr.loadbalancer.server.port=6767"
             - "traefik.http.routers.bazarr.rule=Host(`bazarr.${DOMAIN}`)"
             - "traefik.http.routers.bazarr.middlewares=auth"
-        restart: unless-stopped
         networks:
             - web
+        restart: unless-stopped
 
     heimdall:
         image: linuxserver/heimdall
@@ -312,14 +163,13 @@ services:
             - ${CONFIG}/heimdall:/config
         labels:
             - "traefik.enable=true"
-            - "traefik.http.routers.heimdall.entrypoints=websecure"
-            - "traefik.http.routers.heimdall.tls=true"
+            - "traefik.http.routers.heimdall.entrypoints=web"
             - "traefik.http.services.heimdall.loadbalancer.server.port=80"
-            - "traefik.http.routers.heimdall.rule=Host(`heimdall.${DOMAIN}`)"
+            - "traefik.http.routers.heimdall.rule=Host(`${DOMAIN}`)"
             - "traefik.http.routers.heimdall.middlewares=auth"
-        restart: unless-stopped
         networks:
             - web
+        restart: unless-stopped
 
     duplicati:
         image: linuxserver/duplicati
@@ -328,44 +178,19 @@ services:
             - PUID=1000
             - PGID=1000
             - TZ=${TZ}
-            #- CLI_ARGS= #optional
         volumes:
             - ${CONFIG}/duplicati:/config
             - ${BACKUPS_FOLDER}/duplicati:/backups
             - /:/source:ro
         labels:
             - "traefik.enable=true"
-            - "traefik.http.routers.duplicati.entrypoints=websecure"
-            - "traefik.http.routers.duplicati.tls=true"
+            - "traefik.http.routers.duplicati.entrypoints=web"
             - "traefik.http.services.duplicati.loadbalancer.server.port=8200"
             - "traefik.http.routers.duplicati.rule=Host(`duplicati.${DOMAIN}`)"
-            - "traefik.http.routers.duplicati.middlewares=auth"
-        restart: unless-stopped
+            - "traefik.http.routers.traefik.middlewares=auth"
         networks:
             - web
-
-    rutorrent:
-        image: linuxserver/rutorrent
-        container_name: rutorrent
-        ports:
-            - 51413:51413
-            - 51413:51413/udp
-        environment:
-            - PUID=1000
-            - PGID=1000
-        volumes:
-            - ${CONFIG}/rutorrent:/config
-            - ${DOWNLOAD_FOLDER}:/downloads
-        labels:
-            - "traefik.enable=true"
-            - "traefik.http.routers.rutorrent.entrypoints=websecure"
-            - "traefik.http.routers.rutorrent.tls=true"
-            - "traefik.http.services.rutorrent.loadbalancer.server.port=80"
-            - "traefik.http.routers.rutorrent.rule=Host(`rutorrent.${DOMAIN}`)"
-            - "traefik.http.routers.rutorrent.middlewares=auth"
         restart: unless-stopped
-        networks:
-            - web
 
     vpn:
         container_name: vpn
@@ -377,22 +202,18 @@ services:
             - VPNPORT=1194
             - VPN_FILES="vpn.conf"
             - DNS=${VPNDNSIP}
-        devices:
-            - /dev/net/tun
+            - FIREWALL
         ports:
             - 9091:9091
             - 1194:1194
             - 1194:1194/udp
             - ${VPN_RUTORRENT_PORT}:${VPN_RUTORRENT_PORT}
             - ${VPN_RUTORRENT_PORT}:${VPN_RUTORRENT_PORT}/udp
-            - ${VPN1_RUTORRENT_PORT}:${VPN1_RUTORRENT_PORT}
-            - ${VPN1_RUTORRENT_PORT}:${VPN1_RUTORRENT_PORT}/udp
         networks:
             - web
         tmpfs:
             - /run
             - /tmp
-        restart: unless-stopped
         security_opt:
             - label:disable
         stdin_open: true
@@ -402,36 +223,60 @@ services:
             - ${CONFIG}/vpn:/vpn
         sysctls:
             - net.ipv6.conf.all.disable_ipv6=0
+        restart: unless-stopped
 
     rutorrent-vpn:
         image: linuxserver/rutorrent
-        container_name: rutorrent-vpn
-        
+        container_name: rutorrent-vpn        
         environment:
             - PUID=1000
             - PGID=1000
         volumes:
             - ${CONFIG}/rutorrent-vpn:/config
             - ${DOWNLOAD_FOLDER}:/downloads
+            - /mnt:/mnt
+            - /media:/media
         labels:
             - "traefik.enable=true"
-            - "traefik.http.routers.rutorrents.entrypoints=websecure"
-            - "traefik.http.routers.rutorrents.tls=true"
+            - "traefik.http.routers.rutorrents.entrypoints=web"
             - "traefik.http.services.rutorrents.loadbalancer.server.port=80"
             - "traefik.http.routers.rutorrents.rule=Host(`rutorrents.${DOMAIN}`)"
             - "traefik.http.routers.rutorrents.middlewares=auth"
-        restart: unless-stopped
         depends_on:
             - vpn
         network_mode: service:vpn
+        restart: unless-stopped
+
+    wireguard:
+        image: linuxserver/wireguard
+        container_name: wireguard
+        cap_add:
+            - NET_ADMIN
+            - SYS_MODULE
+        environment:
+            - PUID=1000
+            - PGID=1000
+            - TZ=Europe/London
+            - SERVERPORT=51820
+            - PEERS=1
+            - PEERDNS=auto
+        volumes:
+            - /config/wireguard:/config
+            - /lib/modules:/lib/modules
+        ports:
+            - 51820:51820/udp
+        sysctls:
+            - net.ipv4.conf.all.src_valid_mark=1
+        networks:
+            - web
+        restart: unless-stopped
 
     netdata:
         image: netdata/netdata
         container_name: netdata
         labels:
             - "traefik.enable=true"
-            - "traefik.http.routers.netdata.entrypoints=websecure"
-            - "traefik.http.routers.netdata.tls=true"
+            - "traefik.http.routers.netdata.entrypoints=web"
             - "traefik.http.services.netdata.loadbalancer.server.port=19999"
             - "traefik.http.routers.netdata.rule=Host(`netdata.${DOMAIN}`)"
             - "traefik.http.routers.netdata.middlewares=auth"
@@ -445,13 +290,14 @@ services:
             - /var/run/docker.sock:/var/run/docker.sock:ro
         networks:
             - web
+        restart: unless-stopped
 
     scrutiny:
         image: linuxserver/scrutiny
         container_name: scrutiny
         cap_add:
             - SYS_RAWIO
-            #- SYS_ADMIN #optional for NVME
+            - SYS_ADMIN #optional for NVME
         environment:
             - PUID=1000
             - PGID=1000
@@ -462,49 +308,37 @@ services:
         volumes:
             - ${CONFIG}/scrutiny:/config
             - /run/udev:/run/udev:ro
+            - /dev:/dev
         labels:
             - "traefik.enable=true"
-            - "traefik.http.routers.scrutiny.entrypoints=websecure"
-            - "traefik.http.routers.scrutiny.tls=true"
+            - "traefik.http.routers.scrutiny.entrypoints=web"
             - "traefik.http.services.scrutiny.loadbalancer.server.port=8080"
             - "traefik.http.routers.scrutiny.rule=Host(`scrutiny.${DOMAIN}`)"
             - "traefik.http.routers.scrutiny.middlewares=auth"
         devices:
             - /dev/sda:/dev/sda
-        restart: unless-stopped
+            - /dev/sdc:/dev/sdc
+            - /dev/sdd:/dev/sdd
         networks:
             - web
-
-    psitransfer:
-        image: psitrax/psitransfer
-        container_name: psitransfer
-        volumes:
-            - ${DOWNLOAD_FOLDER}/temp/psitransfer:/data
-            - ${CONFIG}/psitransfer/config.js:/app/config.js
-        environment: 
-            - PSITRANSFER_ADMIN_PASS=${PSI_ADMIN_PASSWORD}
-        labels:
-            - "traefik.enable=true"
-            - "traefik.http.routers.psitransfer.entrypoints=websecure"
-            - "traefik.http.routers.psitransfer.tls=true"
-            - "traefik.http.services.psitransfer.loadbalancer.server.port=3000"
-            - "traefik.http.routers.psitransfer.rule=Host(`transfer.${DOMAIN}`)"
-            - "traefik.http.routers.psitransfer.middlewares=secondaryauth"
         restart: unless-stopped
-        networks:
-            - web
 
-    redbot:
-        container_name: redbot
-        image: phasecorex/red-discordbot:audio
+    samba:
+        container_name: samba
+        image: joebiellik/samba-server
+        ports:
+            - "137:137/udp"
+            - "138:138/udp"
+            - "139:139/tcp"
+            - "445:445/tcp"
         volumes:
-            - ${CONFIG}/redbot:/data
+            - /config/samba:/etc/samba
+            - /mnt:/mnt
+            - /media:/media
         environment:
-            - TOKEN=${DISCORD_TOKEN}
-            - PREFIX=!
-            - TZ=${TZ}
-            - PUID=1000
-            - PGID=1000
+        - USERNAME=${BASIC_LOGIN}
+        - PASSWORD=${BASIC_PASSWORD}
+        network_mode: bridge
         restart: unless-stopped
 
 networks:
