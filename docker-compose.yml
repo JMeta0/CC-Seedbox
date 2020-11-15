@@ -377,6 +377,7 @@ services:
             - VPNPORT=1194
             - VPN_FILES="vpn.conf"
             - DNS=${VPNDNSIP}
+            - FIREWALL
         devices:
             - /dev/net/tun
         ports:
