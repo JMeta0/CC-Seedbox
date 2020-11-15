@@ -261,7 +261,7 @@ services:
             - PEERS=1
             - PEERDNS=auto
         volumes:
-            - /config/wireguard:/config
+            - ${CONFIG}/wireguard:/config
             - /lib/modules:/lib/modules
         ports:
             - 51820:51820/udp
@@ -332,7 +332,7 @@ services:
             - "139:139/tcp"
             - "445:445/tcp"
         volumes:
-            - /config/samba:/etc/samba
+            - ${CONFIG}/samba:/etc/samba
             - /mnt:/mnt
             - /media:/media
         environment:
