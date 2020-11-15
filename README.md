@@ -4,6 +4,7 @@ BEFORE
 - move config files from repo to CONFIG
 - change .env file
 - add vpn.conf in CONFIG/vpn
+- check /dev for scrutiny and add/remove disks to match
 
 AFTER
 - chown -R user:user downloads folder
