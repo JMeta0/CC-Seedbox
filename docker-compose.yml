@@ -187,7 +187,7 @@ services:
             - "traefik.http.routers.duplicati.entrypoints=web"
             - "traefik.http.services.duplicati.loadbalancer.server.port=8200"
             - "traefik.http.routers.duplicati.rule=Host(`duplicati.${DOMAIN}`)"
-            - "traefik.http.routers.traefik.middlewares=auth"
+            - "traefik.http.routers.duplicati.middlewares=auth"
         networks:
             - web
         restart: unless-stopped
