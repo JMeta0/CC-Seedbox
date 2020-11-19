@@ -270,6 +270,8 @@ services:
         networks:
             - web
         restart: unless-stopped
+        dns:
+            - 192.168.31.12
 
     netdata:
         image: netdata/netdata
