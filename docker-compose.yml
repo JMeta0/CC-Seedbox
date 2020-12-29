@@ -343,6 +343,24 @@ services:
         network_mode: bridge
         restart: unless-stopped
 
+    filebrowser:
+        container_name: filebrowser
+        image: filebrowser/filebrowser
+        labels:
+            - "traefik.enable=true"
+            - "traefik.http.routers.filebrowser.entrypoints=web"
+            - "traefik.http.services.filebrowser.loadbalancer.server.port=80"
+            - "traefik.http.routers.filebrowser.rule=Host(`filebrowser.${DOMAIN}`)"
+        volumes:
+            - ${CONFIG}/filebrowser/filebrowser.db:/filebrowser.db
+            - ${CONFIG}/filebrowser/.filebrowser.json:/.filebrowser.json
+            - /mnt:/srv/mnt
+            - /media:/srv/media
+            - ${DOWNLOAD_FOLDER}:/srv/downloads
+        networks:
+            - web
+        restart: unless-stopped
+
 networks:
     web:
         name: web
