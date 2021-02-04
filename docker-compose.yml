@@ -3,7 +3,7 @@ version: "3.8"
 services:
     
     traefik:
-        image: traefik:2.3.2
+        image: traefik:2.4.2
         container_name: traefik
         ports:
             - "80:80"
@@ -181,7 +181,8 @@ services:
         volumes:
             - ${CONFIG}/duplicati:/config
             - ${BACKUPS_FOLDER}/duplicati:/backups
-            - /:/source:ro
+            - /:/source/wholedisk:ro
+            - /mnt:/source/mnt
         labels:
             - "traefik.enable=true"
             - "traefik.http.routers.duplicati.entrypoints=web"
@@ -258,7 +259,7 @@ services:
             - PGID=1000
             - TZ=Europe/London
             - SERVERPORT=51820
-            - PEERS=1
+            - PEERS=2
             - PEERDNS=auto
         volumes:
             - ${CONFIG}/wireguard:/config
@@ -359,6 +360,24 @@ services:
             - ${DOWNLOAD_FOLDER}:/srv/downloads
         networks:
             - web
+        restart: unless-stopped
+
+    homeassistant:
+        image: homeassistant/home-assistant:stable
+        container_name: homeassistant
+        network_mode: host
+        volumes:
+            - ${CONFIG}/homeassistant:/config
+            - /etc/localtime:/etc/localtime:ro
+        restart: always
+
+    esphome:
+        container_name: esphome
+        image: esphome/esphome
+        network_mode: host
+        volumes:
+            - ${CONFIG}/esphome:/config
+            - /etc/localtime:/etc/localtime:ro
         restart: unless-stopped
 
 networks:
