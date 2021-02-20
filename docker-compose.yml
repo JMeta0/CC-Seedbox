@@ -24,6 +24,8 @@ services:
         networks:
             - web
         restart: always
+        extra_hosts:
+            - host.docker.internal:${SERVER_LOCAL_IP}
 
     portainer:
         image: portainer/portainer-ce
@@ -366,6 +368,12 @@ services:
         image: homeassistant/home-assistant:stable
         container_name: homeassistant
         network_mode: host
+        labels:
+            - "traefik.enable=true"
+            - "traefik.http.routers.homeassistant.entrypoints=web"
+            - "traefik.http.routers.homeassistant.rule=Host(`ha.${DOMAIN}`)"
+            - "traefik.http.routers.homeassistant.service=homeassistant"
+            - "traefik.http.services.homeassistant.loadbalancer.server.port=8123"
         volumes:
             - ${CONFIG}/homeassistant:/config
             - /etc/localtime:/etc/localtime:ro
