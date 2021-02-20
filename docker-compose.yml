@@ -371,6 +371,24 @@ services:
             - /etc/localtime:/etc/localtime:ro
         restart: always
 
+    motioneye:
+        image: ccrisan/motioneye:master-amd64
+        container_name: motioneye
+        networks:
+            - web
+        security_opt:
+            - no-new-privileges:true
+        volumes:
+            - /etc/localtime:/etc/localtime:ro
+            - ${CONFIG}/motioneye/etc:/etc/motioneye
+            - /tmp/motioneye/var:/var/lib/motioneye
+        labels:
+            - "traefik.enable=true"
+            - "traefik.http.routers.motioneye.entrypoints=web"
+            - "traefik.http.routers.motioneye.rule=Host(`motioneye.${DOMAIN}`)"
+            - "traefik.http.services.motioneye.loadbalancer.server.port=8765"
+        restart: unless-stopped
+
     esphome:
         container_name: esphome
         image: esphome/esphome
