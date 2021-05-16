@@ -1,7 +1,7 @@
 version: "3.8"
 
 services:
-    
+
     traefik:
         image: traefik:2.4.2
         container_name: traefik
@@ -31,7 +31,7 @@ services:
         image: portainer/portainer-ce
         container_name: portainer
         command: -H unix:///var/run/docker.sock
-        
+
         labels:
             - "traefik.enable=true"
             - "traefik.http.routers.portainer.entrypoints=web"
@@ -230,7 +230,7 @@ services:
 
     rutorrent-vpn:
         image: linuxserver/rutorrent
-        container_name: rutorrent-vpn        
+        container_name: rutorrent-vpn
         environment:
             - PUID=1000
             - PGID=1000
@@ -404,7 +404,64 @@ services:
         volumes:
             - ${CONFIG}/esphome:/config
             - /etc/localtime:/etc/localtime:ro
+            - ${CONFIG}/esphome/font:/config/font
         restart: unless-stopped
+
+    adguard:
+        container_name: adguard
+        volumes:
+            - ${CONFIG}/adguard/work:/opt/adguardhome/work
+            - ${CONFIG}/adguard/conf:/opt/adguardhome/conf
+        ports:
+            - "3000:3000/tcp"
+        labels:
+            - "traefik.enable=true"
+            - "traefik.http.routers.adguard.entrypoints=web"
+            - "traefik.http.routers.adguard.rule=Host(`adguard.${DOMAIN}`)"
+            - "traefik.http.routers.adguard.service=adguard"
+            - "traefik.http.services.adguard.loadbalancer.server.port=3000"
+        image: adguard/adguardhome
+
+    zigbee2mqtt:
+        container_name: zigbee2mqtt
+        image: koenkk/zigbee2mqtt
+        volumes:
+            - /config/zigbee2mqtt/data:/app/data
+            - /run/udev:/run/udev:ro
+        devices:
+            - /dev/ttyUSB0:/dev/ttyACM0
+        restart: always
+        network_mode: host
+        privileged: true
+        environment:
+            - TZ=Europe/Warsaw
+
+    zigbee2mqttAssistant:
+        image: carldebilly/zigbee2mqttassistant
+        container_name: zigbee2mqttAssistant
+        environment:
+            - Z2MA_SETTINGS__MQTTSERVER=192.168.31.12
+            - TZ=Europe/Warsaw
+        labels:
+            - "traefik.enable=true"
+            - "traefik.http.routers.zigbee.entrypoints=web"
+            - "traefik.http.routers.zigbee.rule=Host(`zigbee.${DOMAIN}`)"
+            - "traefik.http.services.zigbee.loadbalancer.server.port=80"
+        restart: unless-stopped
+        networks:
+            - web
+        
+    mosquitto:
+        container_name: mosquitto-MQTT
+        image: eclipse-mosquitto
+        volumes:
+            - /config/mosquitto/config:/mosquitto/config
+            - /config/mosquitto/data:/mosquitto/data
+            - /config/mosquitto/log:/mosquitto/log
+        restart: always
+        network_mode: host
+        environment:
+            - TZ=Europe/Warsaw
 
 networks:
     web:
