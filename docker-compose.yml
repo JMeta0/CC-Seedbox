@@ -109,6 +109,21 @@ services:
             - web
         restart: unless-stopped
 
+    plex:
+        image: linuxserver/plex
+        container_name: plex
+        network_mode: host
+        environment:
+            - PUID=1000
+            - PGID=1000
+            - TZ=${TZ}
+            - VERSION=docker
+        volumes:
+            - ${CONFIG}/plex:/config
+            - /mnt:/mnt
+            - /media:/media
+        restart: unless-stopped
+
     deluge:
         image: linuxserver/deluge
         container_name: deluge
@@ -450,7 +465,7 @@ services:
         restart: unless-stopped
         networks:
             - web
-        
+
     mosquitto:
         container_name: mosquitto-MQTT
         image: eclipse-mosquitto
