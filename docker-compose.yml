@@ -380,7 +380,7 @@ services:
         restart: unless-stopped
 
     homeassistant:
-        image: homeassistant/home-assistant:stable
+        image: homeassistant/home-assistant:2021.9.6
         container_name: homeassistant
         network_mode: host
         labels:
@@ -477,6 +477,45 @@ services:
         network_mode: host
         environment:
             - TZ=Europe/Warsaw
+
+    nextcloud_db:
+        image: mariadb:latest
+        container_name: nextcloud_db
+        command: --transaction-isolation=READ-COMMITTED --log-bin --binlog-format=ROW --innodb-file-per-table=1 --skip-innodb-read-only-compressed
+        environment:
+            - MARIADB_ROOT_PASSWORD=${MARIADB_ROOT_PASSWORD}
+            - MARIADB_DATABASE=nextcloud
+        labels:
+            com.centurylinklabs.watchtower.enable: false
+        volumes:
+        - /config/nextcloud/db:/var/lib/mysql
+        restart: unless-stopped
+        networks:
+            - web
+
+    nextcloud_redis:
+        image: redis:6-alpine
+        container_name: nextcloud_redis
+        restart: unless-stopped
+        networks:
+            - web
+
+    nextcloud:
+        image: nextcloud:23-apache
+        container_name: nextcloud
+        labels:
+            - "traefik.enable=true"
+            - "traefik.http.routers.nextcloud.entrypoints=web"
+            - "traefik.http.routers.nextcloud.rule=Host(`nextcloud.${DOMAIN}`)"
+            - "traefik.http.services.nextcloud.loadbalancer.server.port=80"
+        depends_on:
+        - nextcloud_db
+        - nextcloud_redis
+        volumes:
+        - /media/BACKUP/nextcloud/:/var/www/html
+        restart: unless-stopped
+        networks:
+            - web
 
 networks:
     web:
