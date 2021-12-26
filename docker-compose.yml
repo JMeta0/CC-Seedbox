@@ -380,7 +380,7 @@ services:
         restart: unless-stopped
 
     homeassistant:
-        image: homeassistant/home-assistant:2021.9.6
+        image: homeassistant/home-assistant:2021.12
         container_name: homeassistant
         network_mode: host
         labels:
@@ -441,7 +441,7 @@ services:
         container_name: zigbee2mqtt
         image: koenkk/zigbee2mqtt
         volumes:
-            - /config/zigbee2mqtt/data:/app/data
+            - ${CONFIG}/zigbee2mqtt/data:/app/data
             - /run/udev:/run/udev:ro
         devices:
             - /dev/ttyUSB0:/dev/ttyACM0
@@ -470,9 +470,9 @@ services:
         container_name: mosquitto-MQTT
         image: eclipse-mosquitto
         volumes:
-            - /config/mosquitto/config:/mosquitto/config
-            - /config/mosquitto/data:/mosquitto/data
-            - /config/mosquitto/log:/mosquitto/log
+            - ${CONFIG}/mosquitto/config:/mosquitto/config
+            - ${CONFIG}/mosquitto/data:/mosquitto/data
+            - ${CONFIG}/mosquitto/log:/mosquitto/log
         restart: always
         network_mode: host
         environment:
@@ -488,7 +488,7 @@ services:
         labels:
             com.centurylinklabs.watchtower.enable: false
         volumes:
-        - /config/nextcloud/db:/var/lib/mysql
+        - ${CONFIG}/nextcloud/db:/var/lib/mysql
         restart: unless-stopped
         networks:
             - web
@@ -514,9 +514,43 @@ services:
         volumes:
         - /media/BACKUP/nextcloud/:/var/www/html
         restart: unless-stopped
+
+    photoviewdb:
+        container_name: photoviewdb
+        image: mariadb:10.5
+        restart: unless-stopped
+        environment:
+        - MYSQL_DATABASE=photoview
+        - MYSQL_USER=photoview
+        - MYSQL_PASSWORD=${MARIADB_ROOT_PASSWORD}
+        - MYSQL_RANDOM_ROOT_PASSWORD=1
+        volumes:
+        - ${CONFIG}/photoview/db:/var/lib/mysql
         networks:
-            - web
+            - photoview
+
+    photoview:
+        container_name: photoview
+        image: viktorstrate/photoview:2.3
+        restart: unless-stopped
+        ports:
+        - "5678:80"
+        depends_on:
+        - photoviewdb
+        environment:
+        - PHOTOVIEW_DATABASE_DRIVER=mysql
+        - PHOTOVIEW_MYSQL_URL=photoview:${MARIADB_ROOT_PASSWORD}@tcp(photoviewdb)/photoview
+        - PHOTOVIEW_LISTEN_IP=photoview
+        - PHOTOVIEW_LISTEN_PORT=80
+        - PHOTOVIEW_MEDIA_CACHE=/app/cache
+        volumes:
+        - ${CONFIG}/photoview/cache:/app/cache
+        - /media/BACKUP/photoview:/photos:ro
+        networks:
+            - photoview
 
 networks:
     web:
         name: web
+    photoview:
+        name: photoview
